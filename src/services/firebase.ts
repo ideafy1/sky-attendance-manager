@@ -1,16 +1,34 @@
 import { db, auth } from '@/lib/firebase';
-import { collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { Employee, AttendanceRecord } from '@/types';
+import { collection, doc, getDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
+import { Employee } from '@/types';
 
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (employeeId: string, password: string) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-    return userDoc.data() as Employee;
-  } catch (error) {
+    // First find the user document by employee ID
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where("employeeId", "==", employeeId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      throw new Error('Employee not found');
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    const userData = userDoc.data() as Employee;
+
+    // Use the email from Firestore to login with Firebase Auth
+    const userCredential = await signInWithEmailAndPassword(auth, userData.email, password);
+    
+    // Update the user data with the auth UID
+    return {
+      ...userData,
+      id: userDoc.id,
+      uid: userCredential.user.uid
+    };
+  } catch (error: any) {
     console.error('Login error:', error);
-    throw error;
+    throw new Error(error.message);
   }
 };
 
@@ -23,35 +41,14 @@ export const signOut = async () => {
   }
 };
 
-export const markAttendance = async (userId: string, attendanceData: AttendanceRecord) => {
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    const userData = userDoc.data() as Employee;
-    
-    const attendance = userData.attendance || {};
-    attendance[attendanceData.date] = attendanceData.status;
-    
-    await updateDoc(userRef, {
-      attendance,
-      lastLogin: {
-        date: attendanceData.date,
-        time: attendanceData.time,
-        location: attendanceData.location,
-        photo: attendanceData.photo
-      }
-    });
-  } catch (error) {
-    console.error('Error marking attendance:', error);
-    throw error;
-  }
-};
-
 export const getAllEmployees = async () => {
   try {
     const employeesRef = collection(db, 'users');
     const querySnapshot = await getDocs(employeesRef);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+    return querySnapshot.docs.map(doc => ({ 
+      id: doc.id,
+      ...doc.data() 
+    } as Employee));
   } catch (error) {
     console.error('Error fetching employees:', error);
     throw error;
@@ -60,8 +57,28 @@ export const getAllEmployees = async () => {
 
 export const addNewEmployee = async (employeeData: Omit<Employee, 'id'>) => {
   try {
-    const employeesRef = collection(db, 'users');
-    await setDoc(doc(employeesRef), employeeData);
+    // First create the auth user
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      employeeData.email,
+      employeeData.password as string
+    );
+
+    // Then create the user document in Firestore
+    const userDoc = {
+      name: employeeData.name,
+      email: employeeData.email,
+      employeeId: employeeData.employeeId,
+      isAdmin: false,
+      attendance: {},
+    };
+
+    await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
+    
+    return {
+      id: userCredential.user.uid,
+      ...userDoc
+    };
   } catch (error) {
     console.error('Error adding employee:', error);
     throw error;

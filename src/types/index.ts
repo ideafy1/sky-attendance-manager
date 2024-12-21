@@ -2,6 +2,8 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
+  employeeId: string;
+  password?: string;
   isAdmin: boolean;
   attendance?: Record<string, string>;
   lastLogin?: {

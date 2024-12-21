@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Employee } from '@/types';
@@ -40,10 +40,10 @@ const Index = () => {
 
     try {
       const formData = new FormData(e.currentTarget);
-      const email = formData.get('email') as string;
+      const employeeId = formData.get('employeeId') as string;
       const password = formData.get('password') as string;
 
-      const userData = await loginUser(email, password);
+      const userData = await loginUser(employeeId, password);
       setUser(userData);
       
       toast({
@@ -92,6 +92,8 @@ const Index = () => {
       const newEmployee = {
         name: formData.get('name') as string,
         email: formData.get('email') as string,
+        employeeId: formData.get('employeeId') as string,
+        password: formData.get('password') as string,
         isAdmin: false,
         attendance: {},
       };
@@ -140,9 +142,8 @@ const Index = () => {
           <Card className="w-full max-w-md p-6 mx-auto">
             <form onSubmit={handleLogin} className="space-y-4">
               <Input
-                name="email"
-                type="email"
-                placeholder="Email"
+                name="employeeId"
+                placeholder="Employee ID"
                 required
               />
               <Input
@@ -245,6 +246,11 @@ const Index = () => {
               <Input
                 name="name"
                 placeholder="Name"
+                required
+              />
+              <Input
+                name="employeeId"
+                placeholder="Employee ID"
                 required
               />
               <Input
