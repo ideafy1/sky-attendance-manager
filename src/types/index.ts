@@ -5,7 +5,7 @@ export interface Employee {
   employeeId: string;
   password?: string;
   isAdmin: boolean;
-  attendance?: Record<string, string>;
+  attendance?: Record<string, AttendanceRecord>;
   lastLogin?: {
     date: string;
     time: string;
@@ -13,12 +13,28 @@ export interface Employee {
     ipAddress?: string;
     photo?: string;
   };
+  isFirstLogin?: boolean;
 }
 
 export interface AttendanceRecord {
   date: string;
+  time: string;
   status: 'P' | 'A' | 'L' | 'PL';
-  time?: string;
-  location?: string;
+  location: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  };
   photo?: string;
+  ipAddress?: string;
+}
+
+export interface RegularizationRequest {
+  id: string;
+  userId: string;
+  date: string;
+  time: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
 }

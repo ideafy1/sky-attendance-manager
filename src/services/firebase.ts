@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, updateDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { Employee } from '@/types';
 
@@ -22,7 +22,6 @@ export const loginUser = async (employeeId: string, password: string) => {
   try {
     console.log('Attempting to login with employeeId:', employeeId);
     
-    // First find the user document by employee ID
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where("employeeId", "==", employeeId));
     const querySnapshot = await getDocs(q);
@@ -38,16 +37,19 @@ export const loginUser = async (employeeId: string, password: string) => {
     
     console.log('Found user data:', { ...userData, password: '[REDACTED]' });
 
-    // Use the email from Firestore to login with Firebase Auth
     const userCredential = await signInWithEmailAndPassword(auth, userData.email, password);
     
     console.log('Firebase Auth successful');
 
-    // Return the user data
+    // Check if this is the first login of the day
+    const today = new Date().toISOString().split('T')[0];
+    const isFirstLogin = !userData.attendance?.[today];
+
     return {
       ...userData,
       id: userDoc.id,
-      uid: userCredential.user.uid
+      uid: userCredential.user.uid,
+      isFirstLogin
     };
   } catch (error: any) {
     console.error('Login error:', error);
@@ -60,12 +62,62 @@ export const loginUser = async (employeeId: string, password: string) => {
   }
 };
 
-export const signOut = async () => {
+export const markAttendance = async (
+  userId: string,
+  photoUrl: string,
+  location: { latitude: number; longitude: number; address: string }
+) => {
   try {
-    await firebaseSignOut(auth);
-    console.log('User signed out successfully');
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toLocaleTimeString('en-US', { hour12: false });
+    const isLate = currentTime > '09:30:00';
+
+    const attendanceData = {
+      date: today,
+      time: currentTime,
+      status: isLate ? 'PL' : 'P',
+      location,
+      photo: photoUrl,
+      ipAddress: await fetch('https://api.ipify.org?format=json')
+        .then(res => res.json())
+        .then(data => data.ip)
+    };
+
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      [`attendance.${today}`]: attendanceData
+    });
+
+    return attendanceData;
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('Error marking attendance:', error);
+    throw error;
+  }
+};
+
+export const submitRegularization = async (
+  userId: string,
+  regularizationData: {
+    date: string;
+    time: string;
+    reason: string;
+  }
+) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const regularizationRef = collection(db, 'regularizations');
+    
+    await setDoc(doc(regularizationRef), {
+      userId,
+      ...regularizationData,
+      status: 'pending',
+      submittedAt: new Date().toISOString()
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error submitting regularization:', error);
     throw error;
   }
 };

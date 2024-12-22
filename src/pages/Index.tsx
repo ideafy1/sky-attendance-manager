@@ -6,7 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Employee } from '@/types';
-import { loginUser, signOut, getAllEmployees, addNewEmployee } from '@/services/firebase';
+import { loginUser, signOut, getAllEmployees, addNewEmployee, markAttendance, submitRegularization } from '@/services/firebase';
+import CameraCapture from '@/components/CameraCapture';
+import LocationTracker from '@/components/LocationTracker';
+import RegularizeForm from '@/components/RegularizeForm';
 
 const Index = () => {
   const [user, setUser] = useState<Employee | null>(null);
@@ -15,6 +18,10 @@ const Index = () => {
   const [showNewEmployeeDialog, setShowNewEmployeeDialog] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
+  const [showLocationTracker, setShowLocationTracker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showRegularizeForm, setShowRegularizeForm] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -46,6 +53,11 @@ const Index = () => {
       const userData = await loginUser(employeeId, password);
       setUser(userData);
       
+      if (userData.isFirstLogin) {
+        setShowCameraCapture(true);
+        setShowLocationTracker(true);
+      }
+      
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -63,59 +75,69 @@ const Index = () => {
     }
   };
 
-  const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+  const handlePhotoCapture = async (photoUrl: string) => {
+    setShowCameraCapture(false);
+    if (user) {
       try {
-        await signOut();
-        setUser(null);
-        toast({
-          title: "Success",
-          description: "Logged out successfully",
+        await markAttendance(user.id, photoUrl, {
+          latitude: 0,
+          longitude: 0,
+          address: 'Loading...'
         });
       } catch (error: any) {
-        console.error("Logout error:", error);
+        console.error('Error marking attendance:', error);
         toast({
           title: "Error",
-          description: error.message,
+          description: "Failed to mark attendance",
           variant: "destructive"
         });
       }
     }
   };
 
-  const handleAddEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
+    setShowLocationTracker(false);
+    if (user) {
+      try {
+        await markAttendance(user.id, user.lastLogin?.photo || '', location);
+        toast({
+          title: "Success",
+          description: "Attendance marked successfully",
+        });
+      } catch (error: any) {
+        console.error('Error updating location:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update location",
+          variant: "destructive"
+        });
+      }
+    }
+  };
 
-    try {
-      const formData = new FormData(e.currentTarget);
-      const newEmployee = {
-        name: formData.get('name') as string,
-        email: formData.get('email') as string,
-        employeeId: formData.get('employeeId') as string,
-        password: formData.get('password') as string,
-        isAdmin: false,
-        attendance: {},
-      };
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      setShowRegularizeForm(true);
+    }
+  };
 
-      await addNewEmployee(newEmployee);
-      await fetchEmployees();
-      
-      toast({
-        title: "Success",
-        description: "Employee added successfully",
-      });
-      setShowNewEmployeeDialog(false);
-
-    } catch (error: any) {
-      console.error("Error adding employee:", error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  const handleRegularizeSubmit = async (data: { date: string; time: string; reason: string }) => {
+    if (user) {
+      try {
+        await submitRegularization(user.id, data);
+        toast({
+          title: "Success",
+          description: "Regularization request submitted successfully",
+        });
+      } catch (error: any) {
+        console.error('Error submitting regularization:', error);
+        toast({
+          title: "Error",
+          description: "Failed to submit regularization request",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -159,18 +181,33 @@ const Index = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {showCameraCapture && (
+              <Card className="col-span-2 p-6">
+                <h2 className="text-xl font-semibold mb-4">Capture Photo</h2>
+                <CameraCapture onCapture={handlePhotoCapture} />
+              </Card>
+            )}
+
+            {showLocationTracker && (
+              <Card className="col-span-2 p-6">
+                <h2 className="text-xl font-semibold mb-4">Getting Location</h2>
+                <LocationTracker onLocationUpdate={handleLocationUpdate} />
+              </Card>
+            )}
+
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Attendance Calendar</h2>
               <Calendar
                 mode="single"
-                selected={new Date()}
+                selected={selectedDate}
+                onSelect={handleDateSelect}
                 className="rounded-md border"
               />
             </Card>
 
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Employee Information</h2>
-              {user && (
+            {user && (
+              <Card className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Employee Information</h2>
                 <div className="space-y-2">
                   <p><strong>Name:</strong> {user.name}</p>
                   <p><strong>Email:</strong> {user.email}</p>
@@ -188,8 +225,8 @@ const Index = () => {
                     </>
                   )}
                 </div>
-              )}
-            </Card>
+              </Card>
+            )}
 
             {user.isAdmin && (
               <Card className="col-span-2 p-6">
@@ -237,86 +274,14 @@ const Index = () => {
           </div>
         )}
 
-        <Dialog open={showNewEmployeeDialog} onOpenChange={setShowNewEmployeeDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddEmployee} className="space-y-4">
-              <Input
-                name="name"
-                placeholder="Name"
-                required
-              />
-              <Input
-                name="employeeId"
-                placeholder="Employee ID"
-                required
-              />
-              <Input
-                name="email"
-                type="email"
-                placeholder="Email"
-                required
-              />
-              <Input
-                name="password"
-                type="password"
-                placeholder="Password"
-                required
-              />
-              <Button type="submit" disabled={loading}>
-                {loading ? "Adding..." : "Add Employee"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>Employee Details</DialogTitle>
-            </DialogHeader>
-            {selectedEmployee && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">Personal Information</h3>
-                    <p><strong>Name:</strong> {selectedEmployee.name}</p>
-                    <p><strong>Email:</strong> {selectedEmployee.email}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2">Last Login Details</h3>
-                    {selectedEmployee.lastLogin ? (
-                      <>
-                        <p><strong>Date:</strong> {selectedEmployee.lastLogin.date}</p>
-                        <p><strong>Time:</strong> {selectedEmployee.lastLogin.time}</p>
-                        <p><strong>Location:</strong> {selectedEmployee.lastLogin.location}</p>
-                        {selectedEmployee.lastLogin.photo && (
-                          <img 
-                            src={selectedEmployee.lastLogin.photo}
-                            alt="Login Photo"
-                            className="mt-2 max-w-xs rounded-lg"
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <p>No login records available</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Attendance Calendar</h3>
-                  <Calendar
-                    mode="single"
-                    selected={new Date()}
-                    className="rounded-md border"
-                  />
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        {selectedDate && (
+          <RegularizeForm
+            date={selectedDate}
+            isOpen={showRegularizeForm}
+            onClose={() => setShowRegularizeForm(false)}
+            onSubmit={handleRegularizeSubmit}
+          />
+        )}
       </div>
     </div>
   );
