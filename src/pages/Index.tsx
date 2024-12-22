@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Employee } from '@/types';
 import { loginUser, signOut, getAllEmployees, markAttendance, submitRegularization } from '@/services/firebase';
+import { setupInitialData } from '@/services/initialData';
 import CameraCapture from '@/components/CameraCapture';
 import LocationTracker from '@/components/LocationTracker';
 import RegularizeForm from '@/components/RegularizeForm';
@@ -25,7 +26,16 @@ const Index = () => {
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
 
   useEffect(() => {
-    fetchEmployees();
+    const initializeApp = async () => {
+      try {
+        await setupInitialData();
+        await fetchEmployees();
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   const fetchEmployees = async () => {
@@ -69,7 +79,7 @@ const Index = () => {
       console.error("Login error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to login",
+        description: error.message || "Invalid credentials",
         variant: "destructive"
       });
     } finally {

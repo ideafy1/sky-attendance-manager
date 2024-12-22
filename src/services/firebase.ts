@@ -4,19 +4,15 @@ import {
   collection, 
   doc, 
   getDoc, 
-  setDoc, 
   getDocs, 
   query, 
   where,
   updateDoc,
-  Timestamp,
-  addDoc
+  addDoc,
+  Timestamp 
 } from 'firebase/firestore';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut 
-} from 'firebase/auth';
+import { signOut as firebaseSignOut } from 'firebase/auth';
+import { db, auth } from '@/lib/firebase';
 import { Employee, AttendanceRecord } from '@/types';
 
 const firebaseConfig = {
@@ -50,21 +46,22 @@ export const loginUser = async (employeeId: string, password: string) => {
   try {
     console.log('Attempting to login with employeeId:', employeeId);
     
-    // First, get the employee document
     const employeesRef = collection(db, 'employees');
-    const q = query(employeesRef, where("employeeId", "==", employeeId));
+    const q = query(
+      employeesRef, 
+      where("employeeId", "==", employeeId),
+      where("password", "==", password)
+    );
+    
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      console.error('No employee found with ID:', employeeId);
-      throw new Error('Employee not found');
+      console.error('No employee found with provided credentials');
+      throw new Error('Invalid credentials');
     }
 
     const employeeDoc = querySnapshot.docs[0];
     const employeeData = employeeDoc.data() as Employee;
-    
-    // Attempt to sign in with Firebase Auth
-    const userCredential = await signInWithEmailAndPassword(auth, employeeData.email, password);
     
     // Check if this is the first login of the day
     const today = new Date().toISOString().split('T')[0];
@@ -80,7 +77,6 @@ export const loginUser = async (employeeId: string, password: string) => {
     return {
       ...employeeData,
       id: employeeDoc.id,
-      uid: userCredential.user.uid,
       isFirstLogin
     };
   } catch (error: any) {
