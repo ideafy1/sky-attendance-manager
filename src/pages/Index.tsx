@@ -10,6 +10,7 @@ import CameraCapture from '@/components/CameraCapture';
 import LocationTracker from '@/components/LocationTracker';
 import RegularizeForm from '@/components/RegularizeForm';
 import EmployeeDetailsDialog from '@/components/EmployeeDetailsDialog';
+import AdminDashboard from '@/components/AdminDashboard';
 
 const Index = () => {
   const [user, setUser] = useState<Employee | null>(null);
@@ -50,6 +51,7 @@ const Index = () => {
       const employeeId = formData.get('employeeId') as string;
       const password = formData.get('password') as string;
 
+      console.log('Attempting login with:', { employeeId });
       const userData = await loginUser(employeeId, password);
       setUser(userData);
       
@@ -67,7 +69,7 @@ const Index = () => {
       console.error("Login error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to login",
         variant: "destructive"
       });
     } finally {
@@ -100,7 +102,11 @@ const Index = () => {
         await markAttendance(user.employeeId, photoUrl, {
           latitude: 0,
           longitude: 0,
-          accuracy: 0
+          address: ''
+        });
+        toast({
+          title: "Success",
+          description: "Photo captured successfully",
         });
       } catch (error: any) {
         console.error('Error marking attendance:', error);
@@ -113,7 +119,7 @@ const Index = () => {
     }
   };
 
-  const handleLocationUpdate = async (location: { latitude: number; longitude: number; accuracy: number; address: string }) => {
+  const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
     setShowLocationTracker(false);
     if (user) {
       try {
@@ -235,45 +241,13 @@ const Index = () => {
             )}
 
             {user.isAdmin && (
-              <Card className="col-span-2 p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Admin Dashboard</h2>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr>
-                        <th className="text-left p-2">Name</th>
-                        <th className="text-left p-2">Email</th>
-                        <th className="text-left p-2">Employee ID</th>
-                        <th className="text-left p-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employees.map((emp) => (
-                        <tr key={emp.id} className="border-t">
-                          <td className="p-2">{emp.name}</td>
-                          <td className="p-2">{emp.email}</td>
-                          <td className="p-2">{emp.employeeId}</td>
-                          <td className="p-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedEmployee(emp);
-                                setShowEmployeeDetails(true);
-                              }}
-                            >
-                              View Details
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+              <AdminDashboard 
+                employees={employees}
+                onViewDetails={(emp) => {
+                  setSelectedEmployee(emp);
+                  setShowEmployeeDetails(true);
+                }}
+              />
             )}
           </div>
         )}

@@ -7,16 +7,19 @@ export interface Employee {
   isAdmin: boolean;
   createdAt: string;
   attendance?: Record<string, AttendanceRecord>;
+  uid?: string;
+  isFirstLogin?: boolean;
 }
 
 export interface AttendanceRecord {
   employeeId: string;
-  formattedTime: string;
+  date: string;
+  time: string;
   ipAddress: string;
   location: {
-    accuracy: number;
     latitude: number;
     longitude: number;
+    address: string;
   };
   photo: string;
   status: 'P' | 'PL' | 'A';

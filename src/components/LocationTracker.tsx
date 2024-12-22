@@ -24,6 +24,7 @@ const LocationTracker = ({ onLocationUpdate }: LocationTrackerProps) => {
         const data = await response.json();
         const address = data.display_name;
 
+        console.log('Location captured:', { latitude, longitude, address });
         onLocationUpdate({ latitude, longitude, address });
         setStatus('Location captured successfully');
       } catch (error) {

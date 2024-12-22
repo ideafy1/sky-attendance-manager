@@ -32,11 +32,11 @@ const EmployeeDetailsDialog = ({ employee, isOpen, onClose }: EmployeeDetailsDia
               <h3 className="font-semibold">Today's Attendance</h3>
               {todayAttendance ? (
                 <>
-                  <p><strong>Date:</strong> {format(new Date(todayAttendance.timestamp), 'dd MMM yyyy')}</p>
-                  <p><strong>Time:</strong> {format(new Date(todayAttendance.timestamp), 'HH:mm:ss')}</p>
+                  <p><strong>Date:</strong> {todayAttendance.date}</p>
+                  <p><strong>Time:</strong> {todayAttendance.time}</p>
                   <p><strong>Status:</strong> {todayAttendance.status}</p>
                   <p><strong>IP Address:</strong> {todayAttendance.ipAddress}</p>
-                  <p><strong>Location:</strong> {`${todayAttendance.location.latitude}, ${todayAttendance.location.longitude}`}</p>
+                  <p><strong>Location:</strong> {todayAttendance.location.address}</p>
                 </>
               ) : (
                 <p>No attendance recorded for today</p>
