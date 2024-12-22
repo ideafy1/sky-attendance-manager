@@ -18,6 +18,18 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+export const signOut = async () => {
+  try {
+    console.log('Attempting to sign out user');
+    await firebaseSignOut(auth);
+    console.log('User signed out successfully');
+    return true;
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
+  }
+};
+
 export const loginUser = async (employeeId: string, password: string) => {
   try {
     console.log('Attempting to login with employeeId:', employeeId);

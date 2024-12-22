@@ -75,6 +75,25 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      console.log('User attempting to logout');
+      await signOut();
+      setUser(null);
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to logout",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePhotoCapture = async (photoUrl: string) => {
     setShowCameraCapture(false);
     if (user) {
