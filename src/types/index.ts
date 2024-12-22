@@ -15,6 +15,7 @@ export interface AttendanceRecord {
   employeeId: string;
   date: string;
   time: string;
+  logoutTime?: string;
   ipAddress: string;
   location: {
     latitude: number;
@@ -22,7 +23,7 @@ export interface AttendanceRecord {
     address: string;
   };
   photo: string;
-  status: 'P' | 'PL' | 'A';
+  status: 'P' | 'PL' | 'A' | 'R';
   timestamp: string;
 }
 
@@ -30,8 +31,10 @@ export interface RegularizationRequest {
   id: string;
   employeeId: string;
   date: string;
-  time: string;
+  loginTime: string;
+  logoutTime: string;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
+  employeeName?: string;
 }

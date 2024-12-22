@@ -7,11 +7,12 @@ import {
   where,
   updateDoc,
   addDoc,
+  deleteDoc,
   Timestamp 
 } from 'firebase/firestore';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
-import { Employee, AttendanceRecord } from '@/types';
+import { Employee, AttendanceRecord, RegularizationRequest } from '@/types';
 
 export const signOut = async () => {
   try {
@@ -68,7 +69,7 @@ export const loginUser = async (employeeId: string, password: string) => {
   }
 };
 
-export const markAttendance = async (
+export const punchIn = async (
   employeeId: string,
   photoUrl: string,
   location: { latitude: number; longitude: number; address: string }
@@ -116,10 +117,47 @@ export const markAttendance = async (
       });
     }
 
-    console.log('Attendance marked successfully:', attendanceData);
+    console.log('Punch in successful:', attendanceData);
     return attendanceData;
   } catch (error) {
-    console.error('Error marking attendance:', error);
+    console.error('Error punching in:', error);
+    throw error;
+  }
+};
+
+export const punchOut = async (employeeId: string) => {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const formattedTime = now.toLocaleTimeString('en-US', { hour12: false });
+
+    // Update attendance record
+    const employeesRef = collection(db, 'employees');
+    const q = query(employeesRef, where("employeeId", "==", employeeId));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const employeeDoc = querySnapshot.docs[0];
+      const currentData = employeeDoc.data();
+      const todayAttendance = currentData.attendance?.[today];
+
+      if (todayAttendance) {
+        await updateDoc(doc(db, 'employees', employeeDoc.id), {
+          attendance: {
+            ...currentData.attendance,
+            [today]: {
+              ...todayAttendance,
+              logoutTime: formattedTime
+            }
+          }
+        });
+      }
+    }
+
+    console.log('Punch out successful');
+    return true;
+  } catch (error) {
+    console.error('Error punching out:', error);
     throw error;
   }
 };
@@ -128,14 +166,15 @@ export const submitRegularization = async (
   employeeId: string,
   regularizationData: {
     date: string;
-    time: string;
+    loginTime: string;
+    logoutTime: string;
     reason: string;
   }
 ) => {
   try {
     const regularizationRef = collection(db, 'regularization_requests');
     
-    const request = {
+    const request: Omit<RegularizationRequest, 'id'> = {
       employeeId,
       ...regularizationData,
       status: 'pending',
@@ -147,6 +186,56 @@ export const submitRegularization = async (
     return true;
   } catch (error) {
     console.error('Error submitting regularization:', error);
+    throw error;
+  }
+};
+
+export const handleRegularizationRequest = async (requestId: string, action: 'approve' | 'reject') => {
+  try {
+    const requestRef = doc(db, 'regularization_requests', requestId);
+    
+    if (action === 'approve') {
+      const request = (await getDoc(requestRef)).data() as RegularizationRequest;
+      
+      // Update attendance record
+      const employeesRef = collection(db, 'employees');
+      const q = query(employeesRef, where("employeeId", "==", request.employeeId));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const employeeDoc = querySnapshot.docs[0];
+        const currentData = employeeDoc.data();
+        
+        await updateDoc(doc(db, 'employees', employeeDoc.id), {
+          attendance: {
+            ...currentData.attendance,
+            [request.date]: {
+              employeeId: request.employeeId,
+              date: request.date,
+              time: request.loginTime,
+              logoutTime: request.logoutTime,
+              status: 'P',
+              photo: '',
+              ipAddress: '',
+              location: {
+                latitude: 0,
+                longitude: 0,
+                address: 'Regularized'
+              },
+              timestamp: new Date().toISOString()
+            }
+          }
+        });
+      }
+    }
+    
+    // Delete the request
+    await deleteDoc(requestRef);
+    
+    console.log(`Regularization request ${action}d`);
+    return true;
+  } catch (error) {
+    console.error(`Error ${action}ing regularization:`, error);
     throw error;
   }
 };
@@ -179,6 +268,24 @@ export const getEmployeeAttendance = async (employeeId: string) => {
     }));
   } catch (error) {
     console.error('Error fetching attendance:', error);
+    throw error;
+  }
+};
+
+export const addNewEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'attendance'>) => {
+  try {
+    const employeesRef = collection(db, 'employees');
+    const newEmployee: Omit<Employee, 'id'> = {
+      ...employeeData,
+      createdAt: new Date().toISOString(),
+      attendance: {}
+    };
+    
+    const docRef = await addDoc(employeesRef, newEmployee);
+    console.log('New employee added:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding new employee:', error);
     throw error;
   }
 };

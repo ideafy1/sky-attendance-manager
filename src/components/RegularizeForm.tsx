@@ -11,20 +11,23 @@ interface RegularizeFormProps {
   onClose: () => void;
   onSubmit: (data: {
     date: string;
-    time: string;
+    loginTime: string;
+    logoutTime: string;
     reason: string;
   }) => void;
 }
 
 const RegularizeForm = ({ date, isOpen, onClose, onSubmit }: RegularizeFormProps) => {
-  const [time, setTime] = useState('09:30');
+  const [loginTime, setLoginTime] = useState('09:30');
+  const [logoutTime, setLogoutTime] = useState('18:30');
   const [reason, setReason] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       date: format(date, 'yyyy-MM-dd'),
-      time,
+      loginTime,
+      logoutTime,
       reason,
     });
     onClose();
@@ -38,11 +41,20 @@ const RegularizeForm = ({ date, isOpen, onClose, onSubmit }: RegularizeFormProps
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Time</label>
+            <label className="block text-sm font-medium mb-1">Login Time</label>
             <Input
               type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
+              value={loginTime}
+              onChange={(e) => setLoginTime(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Logout Time</label>
+            <Input
+              type="time"
+              value={logoutTime}
+              onChange={(e) => setLogoutTime(e.target.value)}
               required
             />
           </div>
