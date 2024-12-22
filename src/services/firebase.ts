@@ -1,7 +1,23 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where, updateDoc } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { Employee } from '@/types';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  getDocs, 
+  query, 
+  where,
+  updateDoc,
+  Timestamp 
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut 
+} from 'firebase/auth';
+import { Employee, AttendanceRecord } from '@/types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAXvihOdAIOsBOonbv5pxyeFrNJE2aUCsA",
@@ -34,11 +50,9 @@ export const loginUser = async (employeeId: string, password: string) => {
   try {
     console.log('Attempting to login with employeeId:', employeeId);
     
-    const usersRef = collection(db, 'users');
+    const usersRef = collection(db, 'employees');
     const q = query(usersRef, where("employeeId", "==", employeeId));
     const querySnapshot = await getDocs(q);
-    
-    console.log('Query snapshot:', querySnapshot.empty ? 'No matching documents' : 'Found matching documents');
     
     if (querySnapshot.empty) {
       throw new Error('Employee not found');
@@ -47,12 +61,8 @@ export const loginUser = async (employeeId: string, password: string) => {
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data() as Employee;
     
-    console.log('Found user data:', { ...userData, password: '[REDACTED]' });
-
     const userCredential = await signInWithEmailAndPassword(auth, userData.email, password);
     
-    console.log('Firebase Auth successful');
-
     // Check if this is the first login of the day
     const today = new Date().toISOString().split('T')[0];
     const isFirstLogin = !userData.attendance?.[today];
@@ -65,29 +75,25 @@ export const loginUser = async (employeeId: string, password: string) => {
     };
   } catch (error: any) {
     console.error('Login error:', error);
-    if (error.code === 'auth/wrong-password') {
-      throw new Error('Invalid password');
-    } else if (error.code === 'auth/user-not-found') {
-      throw new Error('Employee not found');
-    }
     throw error;
   }
 };
 
 export const markAttendance = async (
-  userId: string,
+  employeeId: string,
   photoUrl: string,
-  location: { latitude: number; longitude: number; address: string }
+  location: { latitude: number; longitude: number; accuracy: number }
 ) => {
   try {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentTime = now.toLocaleTimeString('en-US', { hour12: false });
-    const isLate = currentTime > '09:30:00';
+    const timestamp = Timestamp.fromDate(now).toDate().toISOString();
+    const formattedTime = now.toLocaleTimeString('en-US', { hour12: false });
+    const isLate = formattedTime > '09:30:00';
 
-    const attendanceData = {
-      date: today,
-      time: currentTime,
+    const attendanceData: AttendanceRecord = {
+      employeeId,
+      formattedTime,
+      timestamp,
       status: isLate ? 'PL' : 'P',
       location,
       photo: photoUrl,
@@ -96,10 +102,8 @@ export const markAttendance = async (
         .then(data => data.ip)
     };
 
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      [`attendance.${today}`]: attendanceData
-    });
+    const attendanceRef = doc(db, 'attendance', `${employeeId}_${now.toISOString().split('T')[0]}`);
+    await setDoc(attendanceRef, attendanceData);
 
     return attendanceData;
   } catch (error) {
@@ -109,7 +113,7 @@ export const markAttendance = async (
 };
 
 export const submitRegularization = async (
-  userId: string,
+  employeeId: string,
   regularizationData: {
     date: string;
     time: string;
@@ -117,11 +121,10 @@ export const submitRegularization = async (
   }
 ) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    const regularizationRef = collection(db, 'regularizations');
+    const regularizationRef = collection(db, 'regularization_requests');
     
     await setDoc(doc(regularizationRef), {
-      userId,
+      employeeId,
       ...regularizationData,
       status: 'pending',
       submittedAt: new Date().toISOString()
@@ -137,7 +140,7 @@ export const submitRegularization = async (
 export const getAllEmployees = async () => {
   try {
     console.log('Fetching all employees');
-    const employeesRef = collection(db, 'users');
+    const employeesRef = collection(db, 'employees');
     const querySnapshot = await getDocs(employeesRef);
     const employees = querySnapshot.docs.map(doc => ({ 
       id: doc.id,
@@ -151,53 +154,15 @@ export const getAllEmployees = async () => {
   }
 };
 
-export const addNewEmployee = async (employeeData: Omit<Employee, 'id'>) => {
-  try {
-    console.log('Adding new employee:', { ...employeeData, password: '[REDACTED]' });
-    
-    // First create the auth user
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      employeeData.email,
-      employeeData.password as string
-    );
-
-    console.log('Created auth user:', userCredential.user.uid);
-
-    // Then create the user document in Firestore
-    const userDoc = {
-      name: employeeData.name,
-      email: employeeData.email,
-      employeeId: employeeData.employeeId,
-      isAdmin: false,
-      attendance: {},
-    };
-
-    await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
-    
-    console.log('Added employee document to Firestore');
-
-    return {
-      id: userCredential.user.uid,
-      ...userDoc
-    };
-  } catch (error) {
-    console.error('Error adding employee:', error);
-    throw error;
-  }
-};
-
 export const getEmployeeAttendance = async (employeeId: string) => {
   try {
-    console.log('Fetching attendance for employee:', employeeId);
-    const userRef = doc(db, 'users', employeeId);
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-      throw new Error('Employee not found');
-    }
-    const userData = userDoc.data() as Employee;
-    console.log('Fetched attendance:', userData.attendance || {});
-    return userData.attendance || {};
+    const attendanceRef = collection(db, 'attendance');
+    const q = query(attendanceRef, where("employeeId", "==", employeeId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
   } catch (error) {
     console.error('Error fetching attendance:', error);
     throw error;

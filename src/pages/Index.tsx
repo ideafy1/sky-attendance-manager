@@ -2,26 +2,26 @@ import { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Employee } from '@/types';
-import { loginUser, signOut, getAllEmployees, addNewEmployee, markAttendance, submitRegularization } from '@/services/firebase';
+import { loginUser, signOut, getAllEmployees, markAttendance, submitRegularization } from '@/services/firebase';
 import CameraCapture from '@/components/CameraCapture';
 import LocationTracker from '@/components/LocationTracker';
 import RegularizeForm from '@/components/RegularizeForm';
+import EmployeeDetailsDialog from '@/components/EmployeeDetailsDialog';
 
 const Index = () => {
   const [user, setUser] = useState<Employee | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showNewEmployeeDialog, setShowNewEmployeeDialog] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
   const [showCameraCapture, setShowCameraCapture] = useState(false);
   const [showLocationTracker, setShowLocationTracker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showRegularizeForm, setShowRegularizeForm] = useState(false);
+  const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -77,7 +77,6 @@ const Index = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('User attempting to logout');
       await signOut();
       setUser(null);
       toast({
@@ -98,10 +97,10 @@ const Index = () => {
     setShowCameraCapture(false);
     if (user) {
       try {
-        await markAttendance(user.id, photoUrl, {
+        await markAttendance(user.employeeId, photoUrl, {
           latitude: 0,
           longitude: 0,
-          address: 'Loading...'
+          accuracy: 0
         });
       } catch (error: any) {
         console.error('Error marking attendance:', error);
@@ -114,11 +113,11 @@ const Index = () => {
     }
   };
 
-  const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
+  const handleLocationUpdate = async (location: { latitude: number; longitude: number; accuracy: number; address: string }) => {
     setShowLocationTracker(false);
     if (user) {
       try {
-        await markAttendance(user.id, user.lastLogin?.photo || '', location);
+        await markAttendance(user.employeeId, user.attendance?.[new Date().toISOString().split('T')[0]]?.photo || '', location);
         toast({
           title: "Success",
           description: "Attendance marked successfully",
@@ -144,7 +143,7 @@ const Index = () => {
   const handleRegularizeSubmit = async (data: { date: string; time: string; reason: string }) => {
     if (user) {
       try {
-        await submitRegularization(user.id, data);
+        await submitRegularization(user.employeeId, data);
         toast({
           title: "Success",
           description: "Regularization request submitted successfully",
@@ -230,19 +229,7 @@ const Index = () => {
                 <div className="space-y-2">
                   <p><strong>Name:</strong> {user.name}</p>
                   <p><strong>Email:</strong> {user.email}</p>
-                  {user.lastLogin && (
-                    <>
-                      <p><strong>Last Login:</strong> {user.lastLogin.date} {user.lastLogin.time}</p>
-                      <p><strong>Location:</strong> {user.lastLogin.location}</p>
-                      {user.lastLogin.photo && (
-                        <img 
-                          src={user.lastLogin.photo} 
-                          alt="Login Photo" 
-                          className="mt-2 max-w-xs rounded-lg"
-                        />
-                      )}
-                    </>
-                  )}
+                  <p><strong>Employee ID:</strong> {user.employeeId}</p>
                 </div>
               </Card>
             )}
@@ -251,9 +238,6 @@ const Index = () => {
               <Card className="col-span-2 p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Admin Dashboard</h2>
-                  <Button onClick={() => setShowNewEmployeeDialog(true)}>
-                    Add New Employee
-                  </Button>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -262,7 +246,7 @@ const Index = () => {
                       <tr>
                         <th className="text-left p-2">Name</th>
                         <th className="text-left p-2">Email</th>
-                        <th className="text-left p-2">Last Login</th>
+                        <th className="text-left p-2">Employee ID</th>
                         <th className="text-left p-2">Actions</th>
                       </tr>
                     </thead>
@@ -271,14 +255,15 @@ const Index = () => {
                         <tr key={emp.id} className="border-t">
                           <td className="p-2">{emp.name}</td>
                           <td className="p-2">{emp.email}</td>
-                          <td className="p-2">
-                            {emp.lastLogin ? `${emp.lastLogin.date} ${emp.lastLogin.time}` : 'Never'}
-                          </td>
+                          <td className="p-2">{emp.employeeId}</td>
                           <td className="p-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setSelectedEmployee(emp)}
+                              onClick={() => {
+                                setSelectedEmployee(emp);
+                                setShowEmployeeDetails(true);
+                              }}
                             >
                               View Details
                             </Button>
@@ -301,6 +286,15 @@ const Index = () => {
             onSubmit={handleRegularizeSubmit}
           />
         )}
+
+        <EmployeeDetailsDialog
+          employee={selectedEmployee}
+          isOpen={showEmployeeDetails}
+          onClose={() => {
+            setShowEmployeeDetails(false);
+            setSelectedEmployee(null);
+          }}
+        />
       </div>
     </div>
   );

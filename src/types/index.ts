@@ -5,33 +5,27 @@ export interface Employee {
   employeeId: string;
   password?: string;
   isAdmin: boolean;
+  createdAt: string;
   attendance?: Record<string, AttendanceRecord>;
-  lastLogin?: {
-    date: string;
-    time: string;
-    location?: string;
-    ipAddress?: string;
-    photo?: string;
-  };
-  isFirstLogin?: boolean;
 }
 
 export interface AttendanceRecord {
-  date: string;
-  time: string;
-  status: 'P' | 'A' | 'L' | 'PL';
+  employeeId: string;
+  formattedTime: string;
+  ipAddress: string;
   location: {
+    accuracy: number;
     latitude: number;
     longitude: number;
-    address: string;
   };
-  photo?: string;
-  ipAddress?: string;
+  photo: string;
+  status: 'P' | 'PL' | 'A';
+  timestamp: string;
 }
 
 export interface RegularizationRequest {
   id: string;
-  userId: string;
+  employeeId: string;
   date: string;
   time: string;
   reason: string;
