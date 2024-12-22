@@ -156,7 +156,7 @@ const Index = () => {
     }
   };
 
-  const handleRegularizeSubmit = async (data: { date: string; time: string; reason: string }) => {
+  const handleRegularizeSubmit = async (data: { date: string; loginTime: string; logoutTime: string; reason: string }) => {
     if (user) {
       try {
         await submitRegularization(user.employeeId, data);

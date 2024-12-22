@@ -1,4 +1,6 @@
+import { initializeApp } from 'firebase/app';
 import { 
+  getFirestore, 
   collection, 
   doc, 
   getDoc, 
@@ -10,9 +12,23 @@ import {
   deleteDoc,
   Timestamp 
 } from 'firebase/firestore';
-import { signOut as firebaseSignOut } from 'firebase/auth';
-import { db, auth } from '@/lib/firebase';
+import { signOut as firebaseSignOut, getAuth } from 'firebase/auth';
 import { Employee, AttendanceRecord, RegularizationRequest } from '@/types';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAXvihOdAIOsBOonbv5pxyeFrNJE2aUCsA",
+  authDomain: "skyinve-96c28.firebaseapp.com",
+  databaseURL: "https://skyinve-96c28-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "skyinve-96c28",
+  storageBucket: "skyinve-96c28.firebasestorage.app",
+  messagingSenderId: "812146837776",
+  appId: "1:812146837776:web:1ded0395564e8ae9177d95",
+  measurementId: "G-7ZX26GXV2Y"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 export const signOut = async () => {
   try {
@@ -69,7 +85,7 @@ export const loginUser = async (employeeId: string, password: string) => {
   }
 };
 
-export const punchIn = async (
+export const markAttendance = async (
   employeeId: string,
   photoUrl: string,
   location: { latitude: number; longitude: number; address: string }
@@ -117,10 +133,9 @@ export const punchIn = async (
       });
     }
 
-    console.log('Punch in successful:', attendanceData);
     return attendanceData;
   } catch (error) {
-    console.error('Error punching in:', error);
+    console.error('Error marking attendance:', error);
     throw error;
   }
 };
