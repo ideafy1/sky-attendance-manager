@@ -15,11 +15,20 @@ interface RegularizeFormProps {
     logoutTime: string;
     reason: string;
   }) => void;
+  defaultLoginTime?: string;
+  defaultLogoutTime?: string;
 }
 
-const RegularizeForm = ({ date, isOpen, onClose, onSubmit }: RegularizeFormProps) => {
-  const [loginTime, setLoginTime] = useState('09:30');
-  const [logoutTime, setLogoutTime] = useState('18:30');
+const RegularizeForm = ({ 
+  date, 
+  isOpen, 
+  onClose, 
+  onSubmit,
+  defaultLoginTime = '09:30',
+  defaultLogoutTime = '18:30'
+}: RegularizeFormProps) => {
+  const [loginTime, setLoginTime] = useState(defaultLoginTime);
+  const [logoutTime, setLogoutTime] = useState(defaultLogoutTime);
   const [reason, setReason] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {

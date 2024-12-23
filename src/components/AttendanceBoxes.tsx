@@ -20,12 +20,12 @@ const AttendanceBox = ({ title, count, type, onClick }: AttendanceBoxProps) => {
   return (
     <Card 
       className={cn(
-        "p-4 text-center transition-colors text-white cursor-pointer",
+        "p-4 text-center transition-colors text-white",
         bgColor,
-        isClickable && "hover:opacity-90",
+        isClickable && "hover:opacity-90 cursor-pointer",
         "w-full"
       )}
-      onClick={onClick}
+      onClick={isClickable ? onClick : undefined}
     >
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-2xl font-bold">{count}</p>

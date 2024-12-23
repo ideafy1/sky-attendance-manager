@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Employee, AttendanceRecord } from '@/types';
@@ -20,6 +19,7 @@ import AdminDashboard from '@/components/AdminDashboard';
 import AttendanceBoxes from '@/components/AttendanceBoxes';
 import PunchButtons from '@/components/PunchButtons';
 import EmployeeInfo from '@/components/EmployeeInfo';
+import AttendanceCalendar from '@/components/AttendanceCalendar';
 
 const Index = () => {
   const [user, setUser] = useState<Employee | null>(null);
@@ -32,6 +32,10 @@ const Index = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isAlreadyPunchedIn, setIsAlreadyPunchedIn] = useState(false);
   const { toast } = useToast();
+  const [presentCount, setPresentCount] = useState(0);
+  const [absentCount, setAbsentCount] = useState(0);
+  const [regularizeCount, setRegularizeCount] = useState(0);
+  const [lateCount, setLateCount] = useState(0);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -141,6 +145,34 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUser(null);
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to logout",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRegularizeClick = () => {
+    setSelectedDate(new Date());
+    setShowRegularizeForm(true);
+  };
+
+  const handleAbsentClick = () => {
+    setSelectedDate(new Date());
+    setShowRegularizeForm(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-4 py-8">
@@ -154,7 +186,7 @@ const Index = () => {
             <h1 className="text-2xl font-bold">Sky Investments</h1>
           </div>
           {user && (
-            <Button onClick={() => signOut()} variant="outline">
+            <Button onClick={handleLogout} variant="outline">
               Logout
             </Button>
           )}
@@ -184,33 +216,32 @@ const Index = () => {
             <div className="grid grid-cols-1 gap-6">
               <PunchButtons 
                 onPunchIn={handlePunchIn}
-                onPunchOut={() => signOut()}
+                onPunchOut={handleLogout}
                 isPunchedIn={isAlreadyPunchedIn}
                 isLoading={loading}
                 isAlreadyPunchedIn={isAlreadyPunchedIn}
               />
 
               <AttendanceBoxes 
-                presentCount={0}
-                absentCount={0}
-                regularizeCount={0}
-                lateCount={0}
-                onAbsentClick={() => setShowRegularizeForm(true)}
-                onRegularizeClick={() => setShowRegularizeForm(true)}
+                presentCount={presentCount}
+                absentCount={absentCount}
+                regularizeCount={regularizeCount}
+                lateCount={lateCount}
+                onAbsentClick={handleAbsentClick}
+                onRegularizeClick={handleRegularizeClick}
               />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="p-6">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate || undefined}
+                  <AttendanceCalendar
+                    selectedDate={selectedDate}
                     onSelect={(date) => {
                       if (date) {
                         setSelectedDate(date);
                         setShowRegularizeForm(true);
                       }
                     }}
-                    className="rounded-md border"
+                    attendanceData={user.attendance || {}}
                   />
                 </Card>
 
@@ -242,6 +273,8 @@ const Index = () => {
               setSelectedDate(null);
             }}
             onSubmit={handleRegularizeSubmit}
+            defaultLoginTime="09:30"
+            defaultLogoutTime="18:30"
           />
         )}
 
