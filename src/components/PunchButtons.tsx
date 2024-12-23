@@ -1,24 +1,51 @@
+import { useState } from "react";
 import { Button } from "./ui/button";
+import { useToast } from "@/hooks/use-toast";
+import PunchInFlow from "./PunchInFlow";
 
 interface PunchButtonsProps {
-  onPunchIn: (photoUrl: string) => void | Promise<void>;
+  onPunchIn: (photoUrl: string, location: { latitude: number; longitude: number; address: string }) => Promise<void>;
   onPunchOut: () => void;
   isPunchedIn: boolean;
   isLoading: boolean;
 }
 
 const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchButtonsProps) => {
+  const [showPunchInFlow, setShowPunchInFlow] = useState(false);
+  const { toast } = useToast();
+
+  const handlePunchOut = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    if (hours < 18 || (hours === 18 && minutes < 30)) {
+      toast({
+        title: "Cannot Punch Out",
+        description: "You can only punch out after 6:30 PM",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onPunchOut();
+  };
+
+  if (showPunchInFlow && !isPunchedIn) {
+    return <PunchInFlow onPunchInComplete={onPunchIn} />;
+  }
+
   return (
     <div className="flex gap-4 justify-center mb-6">
       <Button 
-        onClick={() => onPunchIn('')} 
+        onClick={() => setShowPunchInFlow(true)} 
         disabled={isPunchedIn || isLoading}
         className="w-32"
       >
         Punch In
       </Button>
       <Button 
-        onClick={onPunchOut} 
+        onClick={handlePunchOut} 
         disabled={!isPunchedIn || isLoading}
         variant="outline"
         className="w-32"

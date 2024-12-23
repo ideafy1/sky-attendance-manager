@@ -91,6 +91,7 @@ export const markAttendance = async (
   location: { latitude: number; longitude: number; address: string }
 ) => {
   try {
+    console.log('Marking attendance for:', employeeId);
     const now = new Date();
     const timestamp = now.toISOString();
     const today = timestamp.split('T')[0];
@@ -101,7 +102,7 @@ export const markAttendance = async (
     const ipResponse = await fetch('https://api.ipify.org?format=json');
     const ipData = await ipResponse.json();
 
-    const attendanceData: AttendanceRecord = {
+    const attendanceData = {
       employeeId,
       date: today,
       time: formattedTime,
@@ -111,6 +112,8 @@ export const markAttendance = async (
       photo: photoUrl,
       ipAddress: ipData.ip
     };
+
+    console.log('Attendance data:', attendanceData);
 
     // Add to attendance collection
     const attendanceRef = collection(db, 'attendance');
@@ -133,6 +136,7 @@ export const markAttendance = async (
       });
     }
 
+    console.log('Attendance marked successfully');
     return attendanceData;
   } catch (error) {
     console.error('Error marking attendance:', error);

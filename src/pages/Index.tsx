@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Employee } from '@/types';
 import { loginUser, signOut, getAllEmployees, markAttendance, submitRegularization } from '@/services/firebase';
 import { setupInitialData } from '@/services/initialData';
-import CameraCapture from '@/components/CameraCapture';
-import LocationTracker from '@/components/LocationTracker';
 import RegularizeForm from '@/components/RegularizeForm';
 import EmployeeDetailsDialog from '@/components/EmployeeDetailsDialog';
 import AdminDashboard from '@/components/AdminDashboard';
@@ -22,12 +20,10 @@ const Index = () => {
   const [loading, setLoading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
-  const [showCameraCapture, setShowCameraCapture] = useState(false);
-  const [showLocationTracker, setShowLocationTracker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showRegularizeForm, setShowRegularizeForm] = useState(false);
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<any>(null); // Adjust type as necessary
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -69,11 +65,6 @@ const Index = () => {
       const userData = await loginUser(employeeId, password);
       setUser(userData);
       
-      if (userData.isFirstLogin) {
-        setShowCameraCapture(true);
-        setShowLocationTracker(true);
-      }
-      
       toast({
         title: "Success",
         description: "Logged in successfully",
@@ -109,18 +100,13 @@ const Index = () => {
     }
   };
 
-  const handlePhotoCapture = async (photoUrl: string) => {
-    setShowCameraCapture(false);
+  const handlePunchIn = async (photoUrl: string, location: { latitude: number; longitude: number; address: string }) => {
     if (user) {
       try {
-        await markAttendance(user.employeeId, photoUrl, {
-          latitude: 0,
-          longitude: 0,
-          address: ''
-        });
+        await markAttendance(user.employeeId, photoUrl, location);
         toast({
           title: "Success",
-          description: "Photo captured successfully",
+          description: "Attendance marked successfully",
         });
         // Fetch today's attendance after marking
         await fetchTodayAttendance();
@@ -139,28 +125,6 @@ const Index = () => {
     if (user) {
       // Fetch today's attendance logic here
       // setTodayAttendance(fetchedData);
-    }
-  };
-
-  const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
-    setShowLocationTracker(false);
-    if (user) {
-      try {
-        await markAttendance(user.employeeId, user.attendance?.[new Date().toISOString().split('T')[0]]?.photo || '', location);
-        toast({
-          title: "Success",
-          description: "Attendance marked successfully",
-        });
-        // Fetch today's attendance after marking
-        await fetchTodayAttendance();
-      } catch (error: any) {
-        console.error('Error updating location:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update location",
-          variant: "destructive"
-        });
-      }
     }
   };
 
@@ -224,37 +188,50 @@ const Index = () => {
             </form>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PunchButtons 
-              onPunchIn={handlePhotoCapture} 
-              onPunchOut={handleLogout} 
-              isPunchedIn={!!todayAttendance} 
-              isLoading={loading} 
-            />
-
-            <AttendanceBoxes 
-              presentCount={0} // Replace with actual count
-              absentCount={0} // Replace with actual count
-              regularizeCount={0} // Replace with actual count
-              lateCount={0} // Replace with actual count
-              onAbsentClick={() => {}} // Implement click handler
-              onRegularizeClick={() => {}} // Implement click handler
-            />
-
-            <EmployeeInfo 
-              employee={user} 
-              todayAttendance={todayAttendance} 
-            />
-
-            {user.isAdmin && (
-              <AdminDashboard 
-                employees={employees}
-                onViewDetails={(emp) => {
-                  setSelectedEmployee(emp);
-                  setShowEmployeeDetails(true);
-                }}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <PunchButtons 
+                onPunchIn={handlePunchIn} 
+                onPunchOut={handleLogout} 
+                isPunchedIn={!!todayAttendance} 
+                isLoading={loading} 
               />
-            )}
+
+              <AttendanceBoxes 
+                presentCount={0}
+                absentCount={0}
+                regularizeCount={0}
+                lateCount={0}
+                onAbsentClick={() => {}}
+                onRegularizeClick={() => {}}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="p-6">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate || undefined}
+                    onSelect={handleDateSelect}
+                    className="rounded-md border"
+                  />
+                </Card>
+
+                <EmployeeInfo 
+                  employee={user} 
+                  todayAttendance={todayAttendance} 
+                />
+              </div>
+
+              {user.isAdmin && (
+                <AdminDashboard 
+                  employees={employees}
+                  onViewDetails={(emp) => {
+                    setSelectedEmployee(emp);
+                    setShowEmployeeDetails(true);
+                  }}
+                />
+              )}
+            </div>
           </div>
         )}
 
