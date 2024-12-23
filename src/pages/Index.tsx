@@ -12,6 +12,9 @@ import LocationTracker from '@/components/LocationTracker';
 import RegularizeForm from '@/components/RegularizeForm';
 import EmployeeDetailsDialog from '@/components/EmployeeDetailsDialog';
 import AdminDashboard from '@/components/AdminDashboard';
+import AttendanceBoxes from '@/components/AttendanceBoxes';
+import PunchButtons from '@/components/PunchButtons';
+import EmployeeInfo from '@/components/EmployeeInfo';
 
 const Index = () => {
   const [user, setUser] = useState<Employee | null>(null);
@@ -24,6 +27,7 @@ const Index = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showRegularizeForm, setShowRegularizeForm] = useState(false);
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState<any>(null); // Adjust type as necessary
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -118,6 +122,8 @@ const Index = () => {
           title: "Success",
           description: "Photo captured successfully",
         });
+        // Fetch today's attendance after marking
+        await fetchTodayAttendance();
       } catch (error: any) {
         console.error('Error marking attendance:', error);
         toast({
@@ -126,6 +132,13 @@ const Index = () => {
           variant: "destructive"
         });
       }
+    }
+  };
+
+  const fetchTodayAttendance = async () => {
+    if (user) {
+      // Fetch today's attendance logic here
+      // setTodayAttendance(fetchedData);
     }
   };
 
@@ -138,6 +151,8 @@ const Index = () => {
           title: "Success",
           description: "Attendance marked successfully",
         });
+        // Fetch today's attendance after marking
+        await fetchTodayAttendance();
       } catch (error: any) {
         console.error('Error updating location:', error);
         toast({
@@ -187,11 +202,6 @@ const Index = () => {
             />
             <h1 className="text-2xl font-bold">Sky Investments</h1>
           </div>
-          {user && (
-            <Button onClick={handleLogout} variant="outline">
-              Logout
-            </Button>
-          )}
         </div>
 
         {!user ? (
@@ -215,40 +225,26 @@ const Index = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {showCameraCapture && (
-              <Card className="col-span-2 p-6">
-                <h2 className="text-xl font-semibold mb-4">Capture Photo</h2>
-                <CameraCapture onCapture={handlePhotoCapture} />
-              </Card>
-            )}
+            <PunchButtons 
+              onPunchIn={handlePhotoCapture} 
+              onPunchOut={handleLogout} 
+              isPunchedIn={!!todayAttendance} 
+              isLoading={loading} 
+            />
 
-            {showLocationTracker && (
-              <Card className="col-span-2 p-6">
-                <h2 className="text-xl font-semibold mb-4">Getting Location</h2>
-                <LocationTracker onLocationUpdate={handleLocationUpdate} />
-              </Card>
-            )}
+            <AttendanceBoxes 
+              presentCount={0} // Replace with actual count
+              absentCount={0} // Replace with actual count
+              regularizeCount={0} // Replace with actual count
+              lateCount={0} // Replace with actual count
+              onAbsentClick={() => {}} // Implement click handler
+              onRegularizeClick={() => {}} // Implement click handler
+            />
 
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Attendance Calendar</h2>
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                className="rounded-md border"
-              />
-            </Card>
-
-            {user && (
-              <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Employee Information</h2>
-                <div className="space-y-2">
-                  <p><strong>Name:</strong> {user.name}</p>
-                  <p><strong>Email:</strong> {user.email}</p>
-                  <p><strong>Employee ID:</strong> {user.employeeId}</p>
-                </div>
-              </Card>
-            )}
+            <EmployeeInfo 
+              employee={user} 
+              todayAttendance={todayAttendance} 
+            />
 
             {user.isAdmin && (
               <AdminDashboard 

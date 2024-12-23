@@ -14,7 +14,6 @@ const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchBu
   const currentTime = new Date();
   const currentHour = currentTime.getHours();
   const currentMinutes = currentTime.getMinutes();
-  const timeString = `${currentHour}:${currentMinutes}`;
 
   const handlePunchOut = () => {
     if (currentHour < 18 || (currentHour === 18 && currentMinutes < 30)) {
@@ -34,6 +33,7 @@ const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchBu
       <Button
         onClick={onPunchIn}
         disabled={isPunchedIn || isLoading}
+        className="w-32"
       >
         {isLoading ? "Processing..." : "PUNCH IN"}
       </Button>
@@ -41,6 +41,7 @@ const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchBu
         onClick={handlePunchOut}
         disabled={!isPunchedIn || isLoading}
         variant="secondary"
+        className="w-32"
       >
         PUNCH OUT
       </Button>
