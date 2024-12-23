@@ -8,9 +8,10 @@ interface PunchButtonsProps {
   onPunchOut: () => void;
   isPunchedIn: boolean;
   isLoading: boolean;
+  isAlreadyPunchedIn: boolean;
 }
 
-const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchButtonsProps) => {
+const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading, isAlreadyPunchedIn }: PunchButtonsProps) => {
   const [showPunchInFlow, setShowPunchInFlow] = useState(false);
   const { toast } = useToast();
 
@@ -32,14 +33,14 @@ const PunchButtons = ({ onPunchIn, onPunchOut, isPunchedIn, isLoading }: PunchBu
   };
 
   if (showPunchInFlow && !isPunchedIn) {
-    return <PunchInFlow onPunchInComplete={onPunchIn} />;
+    return <PunchInFlow onPunchInComplete={onPunchIn} isAlreadyPunchedIn={isAlreadyPunchedIn} />;
   }
 
   return (
     <div className="flex gap-4 justify-center mb-6">
       <Button 
         onClick={() => setShowPunchInFlow(true)} 
-        disabled={isPunchedIn || isLoading}
+        disabled={isPunchedIn || isLoading || isAlreadyPunchedIn}
         className="w-32"
       >
         Punch In

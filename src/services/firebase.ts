@@ -30,6 +30,40 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+export const fetchRegularizationRequests = async () => {
+  try {
+    console.log('Fetching regularization requests');
+    const requestsRef = collection(db, 'regularization_requests');
+    const querySnapshot = await getDocs(requestsRef);
+    const requests = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as RegularizationRequest));
+    console.log('Fetched requests:', requests.length);
+    return requests;
+  } catch (error) {
+    console.error('Error fetching regularization requests:', error);
+    throw error;
+  }
+};
+
+export const checkTodayAttendance = async (employeeId: string) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const attendanceRef = collection(db, 'attendance');
+    const q = query(
+      attendanceRef,
+      where("employeeId", "==", employeeId),
+      where("date", "==", today)
+    );
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error('Error checking today attendance:', error);
+    throw error;
+  }
+};
+
 export const signOut = async () => {
   try {
     console.log('Signing out user');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import CameraCapture from './CameraCapture';
@@ -7,13 +7,25 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PunchInFlowProps {
   onPunchInComplete: (photoUrl: string, location: { latitude: number; longitude: number; address: string }) => Promise<void>;
+  isAlreadyPunchedIn: boolean;
 }
 
-const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
+const PunchInFlow = ({ onPunchInComplete, isAlreadyPunchedIn }: PunchInFlowProps) => {
   const [showCamera, setShowCamera] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isAlreadyPunchedIn) {
+      toast({
+        title: "Already Punched In",
+        description: "You have already marked your attendance for today.",
+        variant: "destructive"
+      });
+      setShowCamera(false);
+    }
+  }, [isAlreadyPunchedIn]);
 
   const handlePhotoCapture = async (capturedPhotoUrl: string) => {
     console.log('Photo captured:', capturedPhotoUrl);
@@ -23,7 +35,7 @@ const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
 
   const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
     console.log('Location captured:', location);
-    if (photoUrl) {
+    if (photoUrl && !isAlreadyPunchedIn) {
       setIsLoading(true);
       try {
         await onPunchInComplete(photoUrl, location);
@@ -44,10 +56,14 @@ const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
     }
   };
 
+  if (isAlreadyPunchedIn) {
+    return null;
+  }
+
   if (!showCamera && !photoUrl) {
     return (
       <Card className="p-4 text-center">
-        <Button onClick={() => setShowCamera(true)} disabled={isLoading}>
+        <Button onClick={() => setShowCamera(true)} disabled={isLoading || isAlreadyPunchedIn}>
           Start Camera
         </Button>
       </Card>

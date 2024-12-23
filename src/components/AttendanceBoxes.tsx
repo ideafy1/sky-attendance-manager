@@ -20,12 +20,12 @@ const AttendanceBox = ({ title, count, type, onClick }: AttendanceBoxProps) => {
   return (
     <Card 
       className={cn(
-        "p-4 text-center transition-colors text-white",
+        "p-4 text-center transition-colors text-white cursor-pointer",
         bgColor,
-        isClickable && "cursor-pointer hover:opacity-90",
-        "w-full md:w-1/4 rounded-lg"
+        isClickable && "hover:opacity-90",
+        "w-full"
       )}
-      onClick={isClickable ? onClick : undefined}
+      onClick={onClick}
     >
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-2xl font-bold">{count}</p>
@@ -49,7 +49,7 @@ const AttendanceBoxes = ({
   onRegularizeClick: () => void;
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <AttendanceBox
         title="Present (P)"
         count={presentCount}

@@ -4,8 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Employee } from '@/types';
-import { loginUser, signOut, getAllEmployees, markAttendance, submitRegularization } from '@/services/firebase';
+import { Employee, AttendanceRecord } from '@/types';
+import { 
+  loginUser, 
+  signOut, 
+  getAllEmployees, 
+  markAttendance, 
+  submitRegularization,
+  checkTodayAttendance 
+} from '@/services/firebase';
 import { setupInitialData } from '@/services/initialData';
 import RegularizeForm from '@/components/RegularizeForm';
 import EmployeeDetailsDialog from '@/components/EmployeeDetailsDialog';
@@ -19,11 +26,12 @@ const Index = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const { toast } = useToast();
   const [showRegularizeForm, setShowRegularizeForm] = useState(false);
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
-  const [todayAttendance, setTodayAttendance] = useState<any>(null); // Adjust type as necessary
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isAlreadyPunchedIn, setIsAlreadyPunchedIn] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -37,6 +45,17 @@ const Index = () => {
 
     initializeApp();
   }, []);
+
+  useEffect(() => {
+    const checkAttendance = async () => {
+      if (user) {
+        const hasPunchedIn = await checkTodayAttendance(user.employeeId);
+        setIsAlreadyPunchedIn(hasPunchedIn);
+      }
+    };
+
+    checkAttendance();
+  }, [user]);
 
   const fetchEmployees = async () => {
     try {
@@ -82,34 +101,15 @@ const Index = () => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      setUser(null);
-      toast({
-        title: "Success",
-        description: "Logged out successfully",
-      });
-    } catch (error: any) {
-      console.error('Logout error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to logout",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handlePunchIn = async (photoUrl: string, location: { latitude: number; longitude: number; address: string }) => {
-    if (user) {
+    if (user && !isAlreadyPunchedIn) {
       try {
         await markAttendance(user.employeeId, photoUrl, location);
+        setIsAlreadyPunchedIn(true);
         toast({
           title: "Success",
           description: "Attendance marked successfully",
         });
-        // Fetch today's attendance after marking
-        await fetchTodayAttendance();
       } catch (error: any) {
         console.error('Error marking attendance:', error);
         toast({
@@ -121,20 +121,6 @@ const Index = () => {
     }
   };
 
-  const fetchTodayAttendance = async () => {
-    if (user) {
-      // Fetch today's attendance logic here
-      // setTodayAttendance(fetchedData);
-    }
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setShowRegularizeForm(true);
-    }
-  };
-
   const handleRegularizeSubmit = async (data: { date: string; loginTime: string; logoutTime: string; reason: string }) => {
     if (user) {
       try {
@@ -143,6 +129,7 @@ const Index = () => {
           title: "Success",
           description: "Regularization request submitted successfully",
         });
+        setShowRegularizeForm(false);
       } catch (error: any) {
         console.error('Error submitting regularization:', error);
         toast({
@@ -166,6 +153,11 @@ const Index = () => {
             />
             <h1 className="text-2xl font-bold">Sky Investments</h1>
           </div>
+          {user && (
+            <Button onClick={() => signOut()} variant="outline">
+              Logout
+            </Button>
+          )}
         </div>
 
         {!user ? (
@@ -191,10 +183,11 @@ const Index = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
               <PunchButtons 
-                onPunchIn={handlePunchIn} 
-                onPunchOut={handleLogout} 
-                isPunchedIn={!!todayAttendance} 
-                isLoading={loading} 
+                onPunchIn={handlePunchIn}
+                onPunchOut={() => signOut()}
+                isPunchedIn={isAlreadyPunchedIn}
+                isLoading={loading}
+                isAlreadyPunchedIn={isAlreadyPunchedIn}
               />
 
               <AttendanceBoxes 
@@ -202,16 +195,21 @@ const Index = () => {
                 absentCount={0}
                 regularizeCount={0}
                 lateCount={0}
-                onAbsentClick={() => {}}
-                onRegularizeClick={() => {}}
+                onAbsentClick={() => setShowRegularizeForm(true)}
+                onRegularizeClick={() => setShowRegularizeForm(true)}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="p-6">
                   <Calendar
                     mode="single"
                     selected={selectedDate || undefined}
-                    onSelect={handleDateSelect}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        setShowRegularizeForm(true);
+                      }
+                    }}
                     className="rounded-md border"
                   />
                 </Card>
@@ -239,7 +237,10 @@ const Index = () => {
           <RegularizeForm
             date={selectedDate}
             isOpen={showRegularizeForm}
-            onClose={() => setShowRegularizeForm(false)}
+            onClose={() => {
+              setShowRegularizeForm(false);
+              setSelectedDate(null);
+            }}
             onSubmit={handleRegularizeSubmit}
           />
         )}
