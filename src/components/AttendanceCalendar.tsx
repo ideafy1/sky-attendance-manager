@@ -57,11 +57,11 @@ const AttendanceCalendar = ({ selectedDate, onSelect, attendanceData }: Attendan
         marked: (date) => Boolean(getDayColor(date)),
       }}
       modifiersStyles={{
-        marked: (date) => ({
-          backgroundColor: getDayColor(date),
+        marked: {
+          backgroundColor: getDayColor(new Date()),
           borderRadius: '50%',
           color: 'white',
-        }),
+        }
       }}
     />
   );
