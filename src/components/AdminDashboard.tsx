@@ -1,6 +1,8 @@
 import { Employee } from "@/types";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import AddEmployeeButton from "./AddEmployeeButton";
+import RegularizationRequestsButton from "./RegularizationRequestsButton";
 
 interface AdminDashboardProps {
   employees: Employee[];
@@ -43,6 +45,11 @@ const AdminDashboard = ({ employees, onViewDetails }: AdminDashboardProps) => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex gap-4 mt-6">
+        <AddEmployeeButton />
+        <RegularizationRequestsButton />
       </div>
     </Card>
   );

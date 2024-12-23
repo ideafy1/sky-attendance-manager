@@ -12,6 +12,7 @@ interface PunchInFlowProps {
 const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
   const [showCamera, setShowCamera] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const handlePhotoCapture = async (capturedPhotoUrl: string) => {
@@ -23,6 +24,7 @@ const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
   const handleLocationUpdate = async (location: { latitude: number; longitude: number; address: string }) => {
     console.log('Location captured:', location);
     if (photoUrl) {
+      setIsLoading(true);
       try {
         await onPunchInComplete(photoUrl, location);
         toast({
@@ -36,22 +38,26 @@ const PunchInFlow = ({ onPunchInComplete }: PunchInFlowProps) => {
           description: "Failed to mark attendance",
           variant: "destructive"
         });
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
-  if (!showCamera) {
+  if (!showCamera && !photoUrl) {
     return (
       <Card className="p-4 text-center">
-        <Button onClick={() => setShowCamera(true)}>Start Camera</Button>
+        <Button onClick={() => setShowCamera(true)} disabled={isLoading}>
+          Start Camera
+        </Button>
       </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      <CameraCapture onCapture={handlePhotoCapture} />
-      {photoUrl && <LocationTracker onLocationUpdate={handleLocationUpdate} />}
+      {showCamera && <CameraCapture onCapture={handlePhotoCapture} />}
+      {photoUrl && !isLoading && <LocationTracker onLocationUpdate={handleLocationUpdate} />}
     </div>
   );
 };

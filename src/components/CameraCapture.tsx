@@ -13,7 +13,9 @@ const CameraCapture = ({ onCapture }: CameraCaptureProps) => {
 
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' } 
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
@@ -47,24 +49,27 @@ const CameraCapture = ({ onCapture }: CameraCaptureProps) => {
     }
   };
 
+  React.useEffect(() => {
+    startCamera();
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
   return (
     <Card className="p-4">
-      {!showCamera ? (
-        <Button onClick={startCamera}>Start Camera</Button>
-      ) : (
-        <div className="space-y-4">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full max-w-md mx-auto rounded-lg"
-          />
-          <div className="flex justify-center gap-4">
-            <Button onClick={capturePhoto}>Capture Photo</Button>
-            <Button variant="outline" onClick={stopCamera}>Cancel</Button>
-          </div>
+      <div className="space-y-4">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className="w-full max-w-md mx-auto rounded-lg"
+        />
+        <div className="flex justify-center gap-4">
+          <Button onClick={capturePhoto}>Capture Photo</Button>
+          <Button variant="outline" onClick={stopCamera}>Cancel</Button>
         </div>
-      )}
+      </div>
     </Card>
   );
 };
