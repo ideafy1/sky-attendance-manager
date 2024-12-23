@@ -25,7 +25,6 @@ const RegularizationRequestsButton = () => {
       <RegularizationRequestsDialog
         isOpen={showDialog}
         onClose={() => setShowDialog(false)}
-        requests={[]} // This will be populated from Firestore
         onRequestHandled={handleRequestHandled}
       />
     </>
